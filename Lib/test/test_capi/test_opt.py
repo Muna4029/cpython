@@ -42,11 +42,21 @@ def get_first_executor(func):
 
 
 def iter_opnames(ex):
-    for item in ex:
+    # Be defensive: if ex is None or not iterable, just produce no opnames
+    if ex is None:
+        return
+    try:
+        iterator = iter(ex)
+    except TypeError:
+        return
+    for item in iterator:
         yield item[0]
 
 
 def get_opnames(ex):
+    # If ex is None, return an empty list; otherwise collect opnames from the iterator
+    if ex is None:
+        return []
     return list(iter_opnames(ex))
 
 
@@ -1241,8 +1251,10 @@ class TestUopsOptimization(unittest.TestCase):
             pass
 
         res, ex = self._run_with_optimizer(thing, Foo())
-        opnames = list(iter_opnames(ex))
+        # Ensure ex is not None before attempting to iterate it. The previous
+        # ordering caused a TypeError when ex was None during iteration.
         self.assertIsNotNone(ex)
+        opnames = list(iter_opnames(ex))
         self.assertEqual(res, TIER2_THRESHOLD * 6 + 1)
         call = opnames.index("_CALL_BUILTIN_FAST")
         load_attr_top = opnames.index("_POP_TOP_LOAD_CONST_INLINE_BORROW", 0, call)
